@@ -1,0 +1,78 @@
+1.概念
+条件变星是线程可用的另种同步机制
+条件变量给多个线程提供了-个会合的场所
+条件变量与互斥量起使用时，允许线程以无竞争的方式等待特定的条件发生
+条件变量是线程中的东西，就是等待某一条件的发生， 和信号样
+2.使用场景
+条件变量要与互斥量起使用， 条件本身是由互斥量保护的。线程在改变条件状态之前必须首先锁住互斥量
+其他线程在获得互斥量之前不会察觉到这种改变，因为互斥量必须在锁定以后才能计算条件
+3.数据类型
+pthread_ cond_ t
+4.条件变量初始化与释放
+①静态初始化
+直接把pthread_ cond_ 定义的条件变量设置为常量PTHREAD COND_ INITIALIZER 
+静态初始化条件变量只能拥有默认的条件变量属性，不能设置其他条件变量属性
+| pthread_ cond_ t cond;
+| cond=PTHREAD_ COND INITIALIZER;
+//或者
+pthread_ cond t *cond=(pthread_ cond_ t * )malloc(sizeof(pthread_ cond t));
+*cond=PTHREAD_ COND_ _INITIAL IZER;
+②动态初始化
+静态初始化条件变量只能拥有默认条件变量属性，我们可以通过pthread mutex_ init函数来动态初始化条件变量，并且可以在初
+始化时选择设置条件变量的属性
+#include <pthread .h>
+int pthread_ cond_ init(pthread_ cond t* restrict cond, const pthread_ condattr t* restrict attr);
+int pthread_ cond destroy(pthread_ cond_ t* cond);
+//返回值: 成功返回8;失败返回错误编号
+pthread cond init:
+功能:对条件变量初始化
+参数: 
+...
+参数1:需要初始化的条件变量
+参数2:初始化时条件变量的属性。如果使用默认属性，此处填NULL
+pthread_ cond destroy:
+●功能:对条件变量反初始化(在条件变量释放内存之前)
+参数:条件变量
+备注(重点) :此函数只是反初始化互斥量，并没有释放内存空间，如果互斥量是通过malloc等函数申请的，那么需要在free掉
+互斥量之前调用pthread mutex_ destroy函数
+1 | pthread_ cond_ t cond;
+2 | pthread_ cond_ init(&cond, NULL);
+3
+4 | /*do something* /
+5
+6 | pthread_ cond_ destroy(&cond); 
+1 | pthread_ cond_ t * cond=(pthread_ cond_ t * )malloc(sizeof(pthread_ cond_ t));
+2 | pthread_ cond_ init(cond , NULL);
+4 | /*do something*/
+5
+6 | pthread_ cond destroy(cond);
+free(cond);
+5.等待条件变量
+1 #include <pthread.h>
+2 int pthread_ cond wait(pthread_ cond_ t* restrict cond, pthread_ mutex_ t* restrict mutex);
+3 int pthread_ cond_ timedwait
+(pthread_ cond_ 七享cond, pthread_ mutex_ 七* restrict mutex, const struct timespec享 restrict tsptr )
+  //返回值: 成功返回0;失败返回错误编号
+这两个函数调用成功返回时，线程需要重新计算条件，因为另一个线程可能 经在运行并改变了条件
+pthread cond wait
+注意:等待条件变量变为真
+如何使用:参数mutex互斥量提前锁定，然后该互斥量对条件进行保护，等待参数1cond条件变量变为真。在等待条件变量变为
+真的过程中，此函数-直处于阻塞状态。但是处于阻塞状态的时候，mutex互斥量被解锁(因为其他线程需要使用到这个锁来
+使条件变量变为真)
+当pthread_ cond _wait函数返回时，互斥量再次被锁住
+pthread cond timedwait
+pthread_ cond_ fimedwait函数与pthread_ cond_ wait函数功能相同。不过多了一个超时参数。超时值指定了我们愿意等待多长时
+间，它是通过timespec结构体表示的
+如果超时到期之后，条件还是没有出现，此函数将重新获取互斥量，然后返回错误E TIMEOUT
+注意:这个时间值是一个绝对数而不是相对数。 例如，假设愿意等待3分钟，那么不是把3分钟转换为timespec结构体，而是需
+要把当前时间加上3分钟再转换成timespec结构
+
+6.条件变量信号发送
+1 #include <pthread. h>
+2 int pthread_ cond_ signal(pthread_ cond_ t* cond); 
+3 int pthread_ cond broadcast(pthread_ cond_ t寒 cond);
+ //返回值 :成功返回0; 失败返回错误编号
+.这两个函数用于 通知线程条件变量经满足条件 (变为真)。在调用这两个函数时， 是在给线程或者条件发信号
+必须注意:一定要在改变条件状态以后再给线程发信号
+pthread cond signal函数: 至少能唤醒个等待该条件的线程
+pthread_ cond broad函数:则唤醒等待该条件的所有线程
